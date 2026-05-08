@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pingui — Network Investigation Suite</title>
+  <link rel="stylesheet" href="assets/theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body, html {
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-ui);
+      background: var(--bg);
+    }
+
+    .background-container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+    }
+
+    #network-bg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+    }
+
+    #paw-layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    @keyframes paw-pulse {
+      0%,100% { filter: drop-shadow(0 0 6px #fff8) drop-shadow(0 0 18px #ffee00ff) drop-shadow(0 0 40px rgba(255, 210, 0, 0.9)); }
+      50%      { filter: drop-shadow(0 0 10px #fffc) drop-shadow(0 0 32px #ffee00ff) drop-shadow(0 0 70px rgba(255, 220, 0, 1.0)); }
+    }
+
+    .paw {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.4s ease;
+    }
+
+    .paw.lit {
+      animation: paw-pulse 2.8s ease-in-out infinite;
+    }
+
+    /* Nav */
+    .nav {
+      position: absolute;
+      top: 30px; left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 8%;
+      z-index: 10;
+      color: var(--text);
+    }
+
+    .nav-links {
+      flex: 1;
+    }
+
+    .nav-logo {
+      flex: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 60px;
+    }
+
+    .nav-logo img {
+      height: 170px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .nav-spacer {
+      flex: 1;
+    }
+
+    .nav-links a {
+      color: var(--muted2);
+      text-decoration: none;
+      margin-left: 28px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: color var(--t-normal);
+    }
+
+    .nav-links a:hover { color: var(--primary); }
+
+    /* Hero */
+    .content {
+      position: relative;
+      z-index: 3;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0 8%;
+    }
+
+    .left-side {
+      flex: 1;
+      color: var(--text);
+      max-width: 560px;
+    }
+
+    .eyebrow {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 16px;
+      opacity: 0.85;
+    }
+
+    .title {
+      font-size: 3.8rem;
+      line-height: 1.1;
+      margin-bottom: 18px;
+      font-weight: 700;
+      background: linear-gradient(100deg, #ffffff 40%, #7ecfff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--text-sub);
+      margin-bottom: 36px;
+      line-height: 1.6;
+    }
+
+    .btn-primary {
+      padding: 14px 36px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: var(--font-ui);
+      border-radius: 50px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      background: var(--primary);
+      color: var(--bg);
+      border: none;
+      transition: all var(--t-normal);
+      box-shadow: var(--glow-md);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hi);
+      transform: translateY(-3px);
+      box-shadow: var(--glow-lg);
+    }
+
+    /* Mascot */
+    .penguin-container {
+      position: absolute;
+      right: 6%;
+      bottom: 12%;
+      z-index: 3;
+      text-align: center;
+    }
+
+    .penguin-glow {
+      position: relative;
+      width: 420px;
+      height: 460px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .penguin-glow::before {
+      content: '';
+      position: absolute;
+      inset: -20px;
+      background: radial-gradient(ellipse at center,
+        rgba(0, 212, 255, 0.22) 0%,
+        rgba(0, 212, 255, 0.10) 30%,
+        rgba(10, 10, 31, 0.40) 60%,
+        transparent 75%);
+      border-radius: 50%;
+      z-index: -1;
+      filter: blur(24px);
+    }
+
+    .penguin {
+      width: 400px;
+      filter:
+        drop-shadow(0 0 2px rgba(0,0,0,1))
+        drop-shadow(0 0 5px rgba(0,0,0,1))
+        drop-shadow(0 0 10px rgba(0,0,0,0.9))
+        drop-shadow(0 0 18px rgba(0, 212, 255, 0.70))
+        drop-shadow(0 0 48px rgba(0, 212, 255, 0.30));
+    }
+  </style>
+</head>
+<body>
+
+  <div class="background-container">
+
+    <canvas id="network-bg"></canvas>
+    <div id="paw-layer"></div>
+
+    <!-- Nav -->
+    <div class="nav">
+      <div class="nav-spacer"></div>
+      <div class="nav-logo">
+        <img src="assets/logo-full.png" alt="Pingui logo">
+      </div>
+      <div class="nav-links" style="text-align:right">
+        <a href="#">Features</a>
+        <a href="#">About</a>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="content">
+      <div class="left-side">
+        <div class="eyebrow">Network Investigation Suite</div>
+        <h1 class="title">See Every<br>Hop. Every<br>Connection.</h1>
+        <p class="subtitle">
+          Ping. Trace. Map. Inspect.<br>
+          Everything you need to understand<br>what's between you and anywhere.
+        </p>
+        <a href="/app" class="btn-primary">Open Pingui</a>
+      </div>
+    </div>
+
+    <!-- Mascot -->
+    <div class="penguin-container">
+      <div class="penguin-glow">
+        <img src="assets/mascot-glow.png" alt="Pingui detective" class="penguin">
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Read particle config from theme vars
+    const s = getComputedStyle(document.documentElement);
+    const pSpeed   = parseFloat(s.getPropertyValue('--particle-speed'))   || 0.7;
+    const pCount   = parseInt(s.getPropertyValue('--particle-count'))      || 90;
+    const pLinkDst = parseInt(s.getPropertyValue('--particle-link-distance')) || 160;
+    const pLinkOp  = parseFloat(s.getPropertyValue('--particle-link-opacity')) || 0.2;
+    const pLinkW   = parseFloat(s.getPropertyValue('--particle-link-width'))   || 1.2;
+    const pGrabDst = parseInt(s.getPropertyValue('--particle-grab-distance'))  || 180;
+    const pGrabOp  = parseFloat(s.getPropertyValue('--particle-grab-opacity')) || 0.4;
+    const primary  = s.getPropertyValue('--primary').trim() || '#00d4ff';
+
+    tsParticles.load("network-bg", {
+      fpsLimit: 60,
+      background: { color: { value: "transparent" } },
+      particles: {
+        number: { value: pCount, density: { enable: true, value_area: 800 } },
+        color: { value: [primary, "#4fc3f7", "#81d4fa"] },
+        shape: { type: "circle" },
+        opacity: { value: 0.65, random: false },
+        size: { value: 3.5, random: { enable: true, minimumValue: 1.5 } },
+        links: {
+          enable: true,
+          distance: pLinkDst,
+          color: "#4fc3f7",
+          opacity: pLinkOp,
+          width: pLinkW
+        },
+        move: {
+          enable: true,
+          speed: pSpeed,
+          direction: "none",
+          random: false,
+          straight: false,
+          outModes: "out"
+        }
+      },
+      interactivity: {
+        detectsOn: "canvas",
+        events: { onHover: { enable: true, mode: "grab" }, resize: true },
+        modes: { grab: { distance: pGrabDst, links: { opacity: pGrabOp } } }
+      },
+      detectRetina: true
+    });
+
+    // Paw trail — single static path from mascot feet toward hero, appears once
+    (function() {
+      const layer  = document.getElementById('paw-layer');
+      const ts     = getComputedStyle(document.documentElement);
+      const STEPS  = parseInt(ts.getPropertyValue('--paw-count'))    || 10;
+      const SIDE   = parseFloat(ts.getPropertyValue('--paw-side'))   || 11;
+      const DELAY  = parseFloat(ts.getPropertyValue('--paw-delay'))  || 400;
+      const INTV   = parseFloat(ts.getPropertyValue('--paw-interval'))|| 160;
+      const OPAC   = parseFloat(ts.getPropertyValue('--paw-opacity')) || 0.52;
+      const PAW_COL = ts.getPropertyValue('--paw').trim() || '#c9a86c';
+
+      function pawSVG(col) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 44" width="42" height="46">
+          <ellipse cx="20" cy="32" rx="11" ry="9" fill="${col}"/>
+          <ellipse cx="9"  cy="20" rx="5"  ry="6" fill="${col}"/>
+          <ellipse cx="20" cy="17" rx="5"  ry="6" fill="${col}"/>
+          <ellipse cx="31" cy="20" rx="5"  ry="6" fill="${col}"/>
+          <ellipse cx="5"  cy="32" rx="4"  ry="5" fill="${col}"/>
+          <ellipse cx="35" cy="32" rx="4"  ry="5" fill="${col}"/>
+        </svg>`;
+      }
+
+      function placePrints() {
+        const W = window.innerWidth, H = window.innerHeight;
+        const startX = W * 0.83, startY = H * 0.84;
+        const endX   = W * 0.28, endY   = H * 0.70;
+        const dx = endX - startX, dy = endY - startY;
+        const angle = Math.atan2(dy, dx);
+        const perpX = Math.cos(angle + Math.PI / 2);
+        const perpY = Math.sin(angle + Math.PI / 2);
+        const baseDeg = (angle * 180 / Math.PI) + 90;
+
+        for (let i = 0; i < STEPS; i++) {
+          const t = i / (STEPS - 1);
+          const cx = startX + dx * t;
+          const cy = startY + dy * t;
+
+          // Alternating step offset + sinusoidal swerve
+          const stepSide = (i % 2 === 0 ? 1 : -1) * SIDE;
+          const swerve   = Math.sin(i * 0.9) * 22;
+          const side     = stepSide + swerve;
+
+          // Slight rotation variation per print to feel organic
+          const deg = baseDeg + Math.sin(i * 1.3) * 12;
+
+          const el = document.createElement('div');
+          el.className = 'paw';
+          el.innerHTML = pawSVG(PAW_COL);
+          el.style.left = (cx + perpX * side - 13) + 'px';
+          el.style.top  = (cy + perpY * side - 14) + 'px';
+          el.style.transform = `rotate(${deg}deg)`;
+          layer.appendChild(el);
+
+          // Slow staggered fade-in, then add pulse glow class
+          setTimeout(() => {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              el.style.opacity = OPAC;
+              setTimeout(() => el.classList.add('lit'), 1400);
+            }));
+          }, DELAY + i * INTV * 1.6);
+        }
+      }
+
+      placePrints();
+    })();
+  </script>
+
+</body>
+</html>

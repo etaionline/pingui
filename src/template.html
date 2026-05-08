@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pingui — Network Detective</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theme.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<!-- BUILD:CSS -->
+</head>
+<body>
+
+
+<!-- ═══════════════════════════════════════════════
+     LANDING
+════════════════════════════════════════════════ -->
+<div id="landing" style="display:none">
+  <canvas id="cstar"></canvas>
+  <div id="l-scanline"></div>
+  <div id="lc">
+    <div id="l-left">
+      <img src="/assets/logo.png" id="l-logo" alt="Pingui logo">
+      <div id="l-wordmark">inGui</div>
+      <div id="l-tagline">Trace any path.<br>Know every node.</div>
+      <p id="l-sub">Open-source network investigation tool.<br>Free, forever.</p>
+      <div id="lbtns">
+        <button class="btn-primary" onclick="enterInvestigate()">Start Investigating</button>
+        <button class="btn-ghost" onclick="openBeta()">Request Beta Access</button>
+      </div>
+    </div>
+    <div id="l-right">
+      <div id="mglow"></div>
+      <img src="/assets/mascot-glow.png" id="mascot" alt="Pingui">
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     INVESTIGATION VIEW
+════════════════════════════════════════════════ -->
+<div id="investigate" class="hidden">
+
+  <canvas id="app-bg" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none"></canvas>
+
+  <!-- Header -->
+  <header id="inv-hdr">
+    <div id="hdr-left">
+      <img src="/assets/logo-full.png" id="hdr-logo" alt="Pingui" onclick="location.href='/'" title="Back to home" style="cursor:pointer">
+    </div>
+
+    <span id="hdr-target" title="Click to copy" onclick="
+      const t=this.dataset.target||'';
+      if(!t)return;
+      navigator.clipboard.writeText(t).then(()=>{
+        this.textContent='copied!';
+        setTimeout(()=>this.textContent=t,1200);
+      });
+    "></span>
+
+    <div id="hdr-right">
+      <button class="hdr-action-btn" onclick="downloadExport()" title="Download session export" style="position:relative">
+        Export ↓
+        <span id="cam-badge" style="display:none;position:absolute;top:-5px;right:-5px;
+          width:14px;height:14px;border-radius:50%;background:var(--teal);
+          color:#050d1a;font-size:8px;font-weight:700;
+          align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace"></span>
+      </button>
+      <button class="hdr-action-btn disabled" title="Logs — coming soon">Logs</button>
+    </div>
+  </header>
+
+  <!-- MOBILE SIDEBAR (left, persistent) -->
+  <div id="m-sidebar">
+    <div id="m-side-mascot">
+      <img src="/assets/mascot-glow.png" alt="Pingui">
+      <button id="m-side-myip" onclick="investigateMyIp()">My IP · <span id="m-side-myip-val">…</span></button>
+    </div>
+    <div id="m-side-sessions">
+      <div class="m-side-hdr">Sessions <span id="m-sess-count"></span></div>
+      <div id="m-side-session-list"></div>
+    </div>
+    <div id="m-side-quick">
+      <div class="m-side-hdr">Quick</div>
+      <button class="sb-quick" onclick="quickInv('8.8.8.8')">8.8.8.8</button>
+      <button class="sb-quick" onclick="quickInv('1.1.1.1')">1.1.1.1</button>
+      <button class="sb-quick" onclick="quickInv('cloudflare.com')">cf.com</button>
+    </div>
+  </div>
+
+  <!-- MOBILE BOTTOM BAR (quick links row + search row) -->
+  <div id="m-bottom-bar">
+    <div id="m-btn-row">
+      <button onclick="quickInv('8.8.8.8')">8.8.8.8</button>
+      <button onclick="quickInv('1.1.1.1')">1.1.1.1</button>
+      <button onclick="quickInv('cloudflare.com')">cf.com</button>
+    </div>
+    <div id="m-search-row">
+      <input id="m-target-input" class="mono" placeholder="Enter IP or domain…"
+        spellcheck="false" autocomplete="off"
+        onkeydown="if(event.key==='Enter')doMobileInvestigate()">
+      <button id="m-go-btn" onclick="doMobileInvestigate()">Go</button>
+    </div>
+  </div>
+
+  <!-- Main 4-column grid -->
+  <div id="main-grid">
+
+    <!-- SIDEBAR TOP — mascot + myip -->
+    <div id="sb-top">
+      <img src="/assets/mascot-glow.png" id="sb-mascot" alt="Pingui">
+      <button id="sb-myip-btn" class="tip" data-tip="Investigate your public IP" onclick="investigateMyIp()">
+        My IP · <span id="myip-val">…</span>
+      </button>
+<div class="sb-div"></div>                                              
+<span class="sb-label">Quick</span>                                     
+<button class="sb-quick idle" onclick="quickInv('8.8.8.8')">8.8.8.8 <span class="sb-quick-label">Google DNS</span></button>                           
+<button class="sb-quick idle" onclick="quickInv('1.1.1.1')">1.1.1.1 <span class="sb-quick-label">Cloudflare</span></button>                           
+<button class="sb-quick idle" onclick="quickInv('cloudflare.com')">cloudflare.com <span class="sb-quick-label">CDN edge</span></button>               
+    </div>
+
+<!-- BLUE PILL ROW -->
+    <div id="pill">
+      <div id="m-pill-left">
+        <button class="m-pill-btn" onclick="mDrawer('left')" title="Sessions">☰</button>
+        <div style="position:relative">
+          <button class="m-pill-btn" id="m-quick-toggle" onclick="toggleMQuick(event)" title="Quick targets">⚡</button>
+          <div id="m-quick-popup">
+            <div class="m-qpop-lbl">Quick targets</div>
+            <button class="sb-quick" onclick="quickInv('8.8.8.8');closeMQuick()">8.8.8.8 <span class="sb-quick-label">Google DNS</span></button>
+            <button class="sb-quick" onclick="quickInv('1.1.1.1');closeMQuick()">1.1.1.1 <span class="sb-quick-label">Cloudflare</span></button>
+            <button class="sb-quick" onclick="quickInv('cloudflare.com');closeMQuick()">cloudflare.com <span class="sb-quick-label">CDN edge</span></button>
+          </div>
+        </div>
+      </div>
+      <div id="pill-search">
+        <input id="target-input" class="mono" placeholder="Enter IP or domain…"
+          spellcheck="false" autocomplete="off"
+          onkeydown="if(event.key==='Enter')doInvestigate()">
+        <button id="sb-inv-btn" class="tip" data-tip="Run investigation" onclick="doInvestigate()">Go</button>
+      </div>
+      <button id="pill-cam-btn" class="tip" data-tip="Take snapshot" onclick="takeSnapshot()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M20 5h-2.586l-2.707-2.707A1 1 0 0014 2h-4a1 1 0 00-.707.293L6.586 5H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2zm-8 11a4 4 0 110-8 4 4 0 010 8zm0-6a2 2 0 100 4 2 2 0 000-4z"/></svg>
+      </button>
+      <button id="m-pill-notes-btn" class="m-pill-btn" onclick="mDrawer('right')" title="Notes">✎</button>
+    </div>
+
+<!-- NOTES PANEL -->
+    <div id="sb-bot">
+      <div class="phdr">
+        <span class="ptitle">Notes</span>
+      </div>
+      <div id="notes-content">
+        <input id="session-title" type="text" placeholder="Investigation title…">
+        <textarea id="notes-area" placeholder="Notes…"></textarea>
+      </div>
+    </div>
+
+    <!-- PING PANEL -->
+    <div id="ping-panel">
+      <div id="m-ping-mascot">
+        <img src="/assets/mascot-glow.png" alt="Pingui">
+      </div>
+      <div id="m-ping-main">
+        <div class="phdr">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="ptitle" style="color:var(--teal)">Live Ping</span>
+            <span id="ping-phdr-ip" style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.3px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="pdot-led" id="ping-led"></div>
+            <span id="ping-stat-lbl">idle</span>
+            <button id="ping-stop-btn" onclick="stopPing()">Stop</button>
+          </div>
+        </div>
+        <div id="ping-rtt">--</div>
+        <canvas id="waveform"></canvas>
+        <div id="ping-stats">
+          <div class="pst"><span class="pst-l">MIN</span><span class="pst-v" id="s-min">--</span></div>
+          <div class="pst"><span class="pst-l">AVG</span><span class="pst-v" id="s-avg">--</span></div>
+          <div class="pst"><span class="pst-l">MAX</span><span class="pst-v" id="s-max">--</span></div>
+          <div class="pst"><span class="pst-l">LOSS</span><span class="pst-v" id="s-loss">0%</span></div>
+          <div class="pst"><span class="pst-l">JITTER</span><span class="pst-v" id="s-jitter">--</span></div>
+        </div>
+        <div id="ping-dots"></div>
+        <div id="m-mini-cards">
+          <div class="m-mini-card" onclick="mobileTab('trace')">
+            <div class="mmc-hdr"><span class="mmc-label">Trace</span><span class="mmc-arr">→</span></div>
+            <div class="mmc-viewport"><div class="mmc-scaler" id="m-mini-trace-inner"></div></div>
+          </div>
+          <div class="m-mini-card" onclick="mobileTab('map')">
+            <div class="mmc-hdr"><span class="mmc-label">Inspector</span><span class="mmc-arr">→</span></div>
+            <div class="mmc-viewport"><div class="mmc-scaler" id="m-mini-whois-inner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div id="map-wrap">
+      <div id="map-hdr">
+        <span class="ptitle">Route Map</span>
+        <div id="map-legend">
+          <div class="leg"><div class="ldot" style="background:var(--rtt-fast)"></div>fast</div>
+          <div class="leg"><div class="ldot" style="background:var(--rtt-sluggish)"></div>medium</div>
+          <div class="leg"><div class="ldot" style="background:var(--rtt-slow)"></div>slow</div>
+          <div class="leg"><div class="ldot" style="background:var(--rtt-loss)"></div>timeout</div>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <!-- TAB STRIP -->
+    <div id="tab-strip">
+      <div class="phdr">
+        <span class="ptitle">Sessions</span>
+      </div>
+      <div id="tab-list"></div>
+    </div>
+
+    <!-- TRACEROUTE -->
+    <div id="trace-panel">
+      <div class="phdr">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="ptitle">Traceroute</span>
+          <span id="trace-phdr-ip" style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--teal);letter-spacing:.3px"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="trace-raw-btn" onclick="toggleTraceRaw()"
+            style="font-size:8px;padding:2px 7px;border-radius:4px;border:1px solid rgba(0,212,255,.25);
+            background:rgba(0,212,255,.06);color:var(--muted2);cursor:pointer;font-family:inherit;
+            letter-spacing:.5px;transition:all .14s">RAW</button>
+          <span id="trace-stat-lbl" style="font-size:10px;color:var(--muted)">idle</span>
+        </div>
+      </div>
+      <div id="trace-scroll">
+        <div id="trace-empty">Enter a target to begin</div>
+        <pre id="trace-raw" style="display:none;flex:1;overflow:auto;padding:10px 12px;
+          font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2);
+          white-space:pre-wrap;word-break:break-all;margin:0;background:var(--bg)"></pre>
+        <table id="trace-table" style="display:none">
+          <thead>
+            <tr>
+              <th class="th-n">#</th>
+              <th>IP · Host · Organization</th>
+              <th style="text-align:right;padding-right:12px">RTT</th>
+            </tr>
+          </thead>
+          <tbody id="trace-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- WHOIS PANEL -->
+    <div id="whois-panel">
+      <div id="wp-hdr">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span class="ptitle">IP Inspector</span>
+          <span id="wp-ip" style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--teal)">—</span>
+        </div>
+        <button id="wp-raw-btn" onclick="toggleWpRaw()"
+          style="font-size:8px;padding:2px 7px;border-radius:4px;border:1px solid rgba(0,212,255,.25);
+          background:rgba(0,212,255,.06);color:var(--muted2);cursor:pointer;font-family:inherit;
+          letter-spacing:.5px;transition:all .14s">RAW</button>
+      </div>
+      <div id="wp-body">
+        <div id="wp-empty">Click any IP to inspect</div>
+        <div id="wp-loaded">
+          <div id="wp-fields"></div>
+          <pre id="wp-raw" style="display:none;flex:1;overflow:auto;padding:10px 12px;
+            font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2);
+            white-space:pre-wrap;word-break:break-all;margin:0;background:var(--bg)"></pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     BETA MODAL
+════════════════════════════════════════════════ -->
+<div id="beta-overlay" onclick="closeBeta()"></div>
+<div id="beta-modal">
+  <button id="beta-close" onclick="closeBeta()">✕</button>
+  <img src="/assets/mascot-glow.png" id="bm-mascot" alt="Pingui">
+  <h2>Join the Waitlist</h2>
+  <p>Pingui is in early beta. Leave your email and we'll reach out when a spot opens.</p>
+  <input type="email" id="beta-email" placeholder="you@example.com"
+    onkeydown="if(event.key==='Enter')submitBeta()">
+  <button id="beta-submit" onclick="submitBeta()">Request Access</button>
+  <div id="beta-msg"></div>
+</div>
+
+<!-- BUILD:JS -->
+
+</body>
+</html>
